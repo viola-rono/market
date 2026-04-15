@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SokoMtaani - Kenya's Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        /* Custom Scrollbar for horizontal galleries */
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        
+        @keyframes pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } }
+        .animate-pulse-green { animation: pulse-green 2s infinite; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Tier Gradients */
+        .tier-bronze { background: linear-gradient(135deg, #cd7f32, #e6ac6e); }
+        .tier-silver { background: linear-gradient(135deg, #c0c0c0, #e8e8e8); }
+        .tier-gold { background: linear-gradient(135deg, #ffd700, #ffec8b); }
+        .tier-platinum { background: linear-gradient(135deg, #e5e4e2, #f0f0f0); color: #333; }
+        .tier-diamond { background: linear-gradient(135deg, #b9f2ff, #00bfff); }
+
+        /* Loader */
+        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #10b981; width: 24px; height: 24px; -webkit-animation: spin 1s linear infinite; /* Safari */ animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .carousel-dot { transition: transform 0.2s, background-color 0.2s; }
+        .carousel-dot.active { background-color: #10b981; transform: scale(1.15); }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <!-- App Container -->
+    <div id="app" class="min-h-screen flex flex-col relative pb-20">
+        
+        <!-- Header -->
+        <header class="sticky top-0 z-50 glass-panel shadow-sm px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="router.navigate('home')">
+                <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white animate-pulse-green">
+                    <i data-lucide="shopping-bag" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-xl leading-none text-emerald-700">SokoMtaani</h1>
+                    <span class="text-xs text-slate-500 font-medium">Kenya's Marketplace</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="router.navigate('notifications')" class="relative p-2 hover:bg-slate-100 rounded-full transition" title="Notifications">
+                    <i data-lucide="bell" class="w-6 h-6 text-slate-600"></i>
+                    <span id="notif-badge" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full hidden"></span>
+                </button>
+                <button type="button" onclick="router.navigate('inbox')" class="relative p-2 hover:bg-slate-100 rounded-full transition" title="Messages">
+                    <i data-lucide="message-square" class="w-6 h-6 text-slate-600"></i>
+                </button>
+                <button onclick="toggleMenu()" class="p-2 hover:bg-slate-100 rounded-full transition">
+                    <i data-lucide="menu" class="w-6 h-6 text-slate-600"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-1 p-4 max-w-5xl mx-auto w-full">
+            <!-- Content injected via JS -->
+        </main>
+
+        <!-- Bottom Nav (Mobile) -->
+        <nav class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 px-6 py-3 flex justify-between items-center z-40 md:hidden">
+            <button onclick="router.navigate('home')" class="flex flex-col items-center gap-1 text-emerald-600">
+                <i data-lucide="home" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">Home</span>
+            </button>
+            <button onclick="router.navigate('favorites')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-600">
+                <i data-lucide="heart" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">Saved</span>
+            </button>
+            <button onclick="handleSellClick()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-600">
+                <div class="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white -mt-8 shadow-lg border-4 border-white">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </div>
+            </button>
+            <button onclick="router.navigate('dashboard')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-600">
+                <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">My Shop</span>
+            </button>
+            <button onclick="router.navigate('settings')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-emerald-600">
+                <i data-lucide="settings" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">Settings</span>
+            </button>
+        </nav>
+
+        <!-- Modals Container -->
+        <div id="modal-container" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <!-- Modals injected here -->
+        </div>
+
+        <!-- Toast Container -->
+        <div id="toast-container" class="fixed top-20 right-4 z-[70] flex flex-col gap-2 pointer-events-none"></div>
+    </div>
+
+    <script>
+        // --- Supabase (public client — keep service role keys off the client) ---
+        const SUPABASE_URL = 'https://ybhhowwxnnpdcwekoujr.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_MD2yG0Hqg45aoxt8ujlKDQ_O05K-6Go';
+        const SUPABASE_PROJECT_REF = 'ybhhowwxnnpdcwekoujr';
+        const EDGE_PESAPAL_SUBMIT = SUPABASE_URL + '/functions/v1/pesapal-submit-order';
+        const EDGE_BAN_CURRENT_USER = SUPABASE_URL + '/functions/v1/ban-current-user';
+
+        let supabaseClient = null;
+        function getSupabase() {
+            const mod = window.supabase;
+            const createClient = mod && (typeof mod.createClient === 'function' ? mod.createClient : mod.default?.createClient);
+            if (!createClient || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+            if (!supabaseClient) {
+                supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+                });
+            }
+            return supabaseClient;
+        }
+
+        // --- State Management ---
+        const store = {
+            user: null, // { id, name, email, avatar, tier, isVerified, isBanned, warnings, country, phone, acceptedTermsAt, termsVersion }
+            products: [],
+            chats: [],
+            favorites: new Set(),
+            sellerLikes: {}, // sellerId -> Set of user ids (string)
+            profileViews: {}, // sellerId -> count
+            notifications: [], // { id, title, body, read, at, route? }
+            verification: { status: 'none', steps: { email: false, phone: false, idUpload: false, liveness: false }, submittedAt: null },
+            countriesCache: null,
+            currentView: 'home',
+            filters: { category: 'All', search: '' },
+            pagination: { page: 1, limit: 10, hasMore: true },
+            
+            loadFavorites() {
+                try {
+                    const raw = localStorage.getItem('soko_favorites');
+                    if (raw) this.favorites = new Set(JSON.parse(raw).map(Number));
+                } catch (e) { this.favorites = new Set(); }
+            },
+            saveFavorites() {
+                localStorage.setItem('soko_favorites', JSON.stringify([...this.favorites]));
+            },
+            loadNotifications() {
+                try {
+                    const raw = localStorage.getItem('soko_notifications');
+                    this.notifications = raw ? JSON.parse(raw) : [];
+                } catch (e) { this.notifications = []; }
+            },
+            saveNotifications() {
+                localStorage.setItem('soko_notifications', JSON.stringify(this.notifications.slice(0, 100)));
+            },
+            pushNotification(title, body, route = null) {
+                this.notifications.unshift({
+                    id: 'n_' + Date.now(),
+                    title,
+                    body,
+                    read: false,
+                    at: new Date().toISOString(),
+                    route
+                });
+                this.saveNotifications();
+                if (typeof updateNotifBadge === 'function') updateNotifBadge();
+            },
+            loadSellerSocial() {
+                try {
+                    const likes = localStorage.getItem('soko_seller_likes');
+                    if (likes) {
+                        const o = JSON.parse(likes);
+                        this.sellerLikes = Object.fromEntries(Object.entries(o).map(([k, v]) => [k, new Set(v)]));
+                    }
+                    const pv = localStorage.getItem('soko_profile_views');
+                    this.profileViews = pv ? JSON.parse(pv) : {};
+                } catch (e) {
+                    this.sellerLikes = {};
+                    this.profileViews = {};
+                }
+            },
+            saveSellerSocial() {
+                const o = Object.fromEntries(Object.entries(this.sellerLikes).map(([k, v]) => [k, [...v]]));
+                localStorage.setItem('soko_seller_likes', JSON.stringify(o));
+                localStorage.setItem('soko_profile_views', JSON.stringify(this.profileViews));
+            },
+            // Mock Data Generators
+            init() {
+                this.loadFavorites();
+                this.loadNotifications();
+                this.loadSellerSocial();
+                // Create mock user if none exists (guest — sign-in optional on public pages)
+                if (!localStorage.getItem('soko_user')) {
+                    this.user = {
+                        id: 'usr_' + Math.random().toString(36).substr(2, 9),
+                        name: 'Guest User',
+                        email: null,
+                        avatar: null,
+                        tier: 'Free',
+                        isVerified: false,
+                        isBanned: false,
+                        warnings: 0,
+                        country: 'Kenya',
+                        phone: null,
+                        views: 0,
+                        productsCount: 0,
+                        joined: new Date().toISOString(),
+                        acceptedTermsAt: null,
+                        termsVersion: null
+                    };
+                } else {
+                    this.user = JSON.parse(localStorage.getItem('soko_user'));
+                }
+                try {
+                    const v = localStorage.getItem('soko_verification');
+                    if (v) this.verification = JSON.parse(v);
+                } catch (e) {}
+
+                // Mock Products
+                this.products = [
+                    {
+                        id: 1,
+                        title: 'Vintage Film Camera',
+                        price: 15000,
+                        currency: 'KES',
+                        condition: 'Good',
+                        location: 'Nairobi, Westlands',
+                        category: 'Electronics',
+                        images: ['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=500&q=80'],
+                        sellerId: 'usr_123',
+                        sellerName: 'Tech Haven',
+                        sellerAvatar: 'https://i.pravatar.cc/150?u=1',
+                        isVerified: true,
+                        isBoosted: true,
+                        tier: 'Gold',
+                        views: 124,
+                        likes: 12,
+                        status: 'active', // active, pending, banned
+                        description: 'Classic 35mm camera in working condition. Comes with leather case.',
+                        reviews: [
+                            { id: 'r1', userId: 'u_alice', user: 'Alice', rating: 5, text: 'Great seller, fast shipping!', date: '2023-10-01', replies: [{ user: 'Tech Haven', text: 'Thank you — glad it arrived safely!', date: '2023-10-02', isSeller: true }] }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        title: 'Handcrafted Leather Sofa',
+                        price: 45000,
+                        currency: 'KES',
+                        condition: 'Like New',
+                        location: 'Mombasa',
+                        category: 'Furniture',
+                        images: [
+                            'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=500&q=80',
+                            'https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?auto=format&fit=crop&w=500&q=80',
+                            'https://images.unsplash.com/photo-1484101403633-562f891dc89a?auto=format&fit=crop&w=500&q=80'
+                        ],
+                        sellerId: 'usr_456',
+                        sellerName: 'Furniture Plus',
+                        sellerAvatar: 'https://i.pravatar.cc/150?u=2',
+                        isVerified: false,
+                        isBoosted: false,
+                        tier: 'Free',
+                        views: 45,
+                        likes: 5,
+                        status: 'active',
+                        description: 'Comfortable 3-seater sofa, barely used. Moving out sale.',
+                        reviews: []
+                    },
+                    {
+                        id: 3,
+                        title: 'Nike Air Force 1',
+                        price: 8000,
+                        currency: 'KES',
+                        condition: 'New',
+                        location: 'Kisumu',
+                        category: 'Fashion',
+                        images: ['https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=500&q=80'],
+                        sellerId: 'usr_789',
+                        sellerName: 'Sneaker Head',
+                        sellerAvatar: 'https://i.pravatar.cc/150?u=3',
+                        isVerified: true,
+                        isBoosted: true,
+                        tier: 'Silver',
+                        views: 340,
+                        likes: 56,
+                        status: 'active',
+                        description: 'Original box included. Size 10 US.',
+                        reviews: []
+                    }
+                ];
+                this.loadPersistedProducts();
+            },
+
+            saveUser() {
+                localStorage.setItem('soko_user', JSON.stringify(this.user));
+            },
+            saveVerification() {
+                localStorage.setItem('soko_verification', JSON.stringify(this.verification));
+            },
+            persistProducts() {
+                localStorage.setItem('soko_products', JSON.stringify(this.products));
+            },
+            loadPersistedProducts() {
+                try {
+                    const raw = localStorage.getItem('soko_products');
+                    if (raw && JSON.parse(raw).length) this.products = JSON.parse(raw);
+                } catch (e) {}
+            }
+        };
+
+        // --- Router ---
+        const router = {
+            routes: {
+                'home': () => views.renderHome(),
+                'product': (id) => views.renderProductDetail(id),
+                'dashboard': () => views.renderDashboard(),
+                'add-product': () => views.renderAddProduct(),
+                'edit-product': (id) => views.renderEditProduct(id),
+                'inbox': () => views.renderInbox(),
+                'chat': (id) => views.renderChat(id),
+                'favorites': () => views.renderFavorites(),
+                'settings': () => views.renderSettings(),
+                'tiers': () => views.renderTiers(),
+                'profile': (id) => views.renderPublicProfile(id),
+                'appeal': () => views.renderAppealForm(),
+                'support': () => views.renderSupport(),
+                'analytics': () => views.renderAnalytics(),
+                'boost': () => views.renderBoostManager(),
+                'notifications': () => views.renderNotificationsCenter()
+            },
+            navigate(route, param = null) {
+                window.scrollTo(0, 0);
+                store.currentView = route;
+                const viewFunc = this.routes[route];
+                if (viewFunc) {
+                    document.getElementById('main-content').innerHTML = viewFunc(param);
+                    lucide.createIcons();
+                    this.updateNavState();
+                    if (typeof updateNotifBadge === 'function') updateNotifBadge();
+
+                    if (route === 'home') views.initHome();
+                    if (route === 'dashboard') views.initDashboard();
+                    if (route === 'product' && param != null) views.initProductDetail(param);
+                }
+            },
+            updateNavState() {
+                document.querySelectorAll('[data-nav-route]').forEach((el) => {
+                    const r = el.getAttribute('data-nav-route');
+                    el.classList.toggle('text-emerald-600', r === store.currentView);
+                    el.classList.toggle('text-slate-400', r !== store.currentView);
+                });
+            }
+        };
+
+        // --- Views (Rendering Logic) ---
+        const views = {
+            // 1. HOME VIEW
+            renderHome() {
+                const q = (store.filters.search || '').trim().toLowerCase();
+                const filtered = store.products.filter(p => {
+                    if (p.status !== 'active') return false;
+                    if (store.filters.category !== 'All' && p.category !== store.filters.category) return false;
+                    if (!q) return true;
+                    const blob = `${p.title} ${p.description} ${p.location} ${p.sellerName} ${p.category}`.toLowerCase();
+                    return blob.includes(q);
+                });
+                const guestDismissed = localStorage.getItem('soko_guest_banner_dismiss') === '1';
+                const showGuest = !guestDismissed && (!store.user || !store.user.email);
+
+                let html = `
+                    ${showGuest ? `
+                    <div class="mb-4 p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 flex flex-col sm:flex-row sm:items-center gap-3 animate-fade-in">
+                        <div class="flex-1 text-sm text-slate-700">
+                            <span class="font-semibold text-emerald-800">Browse as a guest</span> — sign in with Google or email anytime for selling, inbox, and synced saves.
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            <button type="button" onclick="modals.open('auth')" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">Sign in</button>
+                            <button type="button" onclick="localStorage.setItem('soko_guest_banner_dismiss','1'); router.navigate('home')" class="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm hover:bg-white">Dismiss</button>
+                        </div>
+                    </div>` : ''}
+                    <div class="mb-6 animate-fade-in">
+                        <div class="relative">
+                            <i data-lucide="search" class="absolute left-3 top-3 text-slate-400 w-5 h-5"></i>
+                            <input type="search" id="search-input" placeholder="Search title, seller, location, category..." value="${(store.filters.search || '').replace(/"/g, '&quot;')}"
+                                class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+                                oninput="handlers.search(this.value)" autocomplete="off">
+                        </div>
+                        <div class="flex gap-2 mt-4 overflow-x-auto hide-scroll pb-2">
+                            ${['All', 'Electronics', 'Fashion', 'Furniture', 'Cars', 'Property'].map(c => 
+                                `<button onclick="handlers.filterCategory('${c}')" class="px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${store.filters.category === c ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}">${c}</button>`
+                            ).join('')}
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold text-slate-800">Latest Products</h2>
+                        <span class="text-sm text-slate-500">${filtered.length} items</span>
+                    </div>
+
+                    <div id="product-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 pb-20">
+                        ${filtered.map(p => components.productCard(p)).join('')}
+                    </div>
+                    
+                    <div id="loading-trigger" class="h-10 w-full flex justify-center items-center mt-4">
+                        <!-- Lazy loading trigger -->
+                    </div>
+                `;
+                return html;
+            },
+
+            initHome() {
+                const observer = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting && store.pagination.hasMore) {
+                        setTimeout(() => {}, 1000);
+                    }
+                });
+                const trig = document.getElementById('loading-trigger');
+                if (trig) observer.observe(trig);
+            },
+
+            initProductDetail(id) {
+                const gal = document.getElementById('product-image-gallery');
+                const dots = document.querySelectorAll('.carousel-dot');
+                if (!gal || !dots.length) return;
+                gal.addEventListener('scroll', () => {
+                    const w = gal.clientWidth || 1;
+                    const i = Math.round(gal.scrollLeft / w);
+                    dots.forEach((d, idx) => d.classList.toggle('active', idx === i));
+                });
+            },
+
+            // 2. PRODUCT DETAIL VIEW
+            renderProductDetail(id) {
+                const p = store.products.find(x => x.id == id);
+                if (!p) return `<div class="p-10 text-center">Product not found</div>`;
+
+                const isFav = store.favorites.has(p.id);
+                const isOwner = store.user && store.user.id === p.sellerId;
+                p.views = (p.views || 0) + 1;
+                store.persistProducts();
+
+                const imgCount = (p.images && p.images.length) ? p.images.length : 1;
+
+                return `
+                    <div class="animate-fade-in max-w-2xl mx-auto bg-white rounded-2xl shadow-sm overflow-hidden">
+                        <!-- Image Gallery (horizontal swipe) -->
+                        <div class="relative">
+                        <div id="product-image-gallery" class="relative h-64 md:h-96 bg-slate-100 overflow-x-auto flex snap-x snap-mandatory hide-scroll scroll-smooth">
+                            ${p.images.map(img => `
+                                <div class="min-w-full h-full snap-center shrink-0 relative">
+                                    <img src="${img}" alt="" class="w-full h-full object-cover pointer-events-none select-none">
+                                </div>
+                            `).join('')}
+                            <div class="absolute top-4 right-4 flex gap-2 z-10">
+                                <button type="button" onclick="event.stopPropagation(); handlers.toggleFav(${p.id})" class="p-2 bg-white/80 backdrop-blur rounded-full shadow-sm hover:bg-white">
+                                    <i data-lucide="heart" class="w-5 h-5 ${isFav ? 'fill-red-500 text-red-500' : 'text-slate-600'}"></i>
+                                </button>
+                                <button type="button" onclick="event.stopPropagation(); handlers.reportProduct(${p.id})" class="p-2 bg-white/80 backdrop-blur rounded-full shadow-sm hover:bg-white" title="Report listing">
+                                    <i data-lucide="flag" class="w-5 h-5 text-slate-600"></i>
+                                </button>
+                            </div>
+                            ${p.isBoosted ? `<div class="absolute top-4 left-4 z-10 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> SPONSORED</div>` : ''}
+                        </div>
+                        ${imgCount > 1 ? `
+                        <div class="flex justify-center gap-1.5 py-2 bg-slate-50 border-b border-slate-100">
+                            ${p.images.map((_, i) => `<button type="button" aria-label="Slide ${i + 1}" class="carousel-dot w-2 h-2 rounded-full bg-slate-300 ${i === 0 ? 'active' : ''}" onclick="handlers.scrollGallery(${i})"></button>`).join('')}
+                        </div>
+                        <p class="text-center text-[10px] text-slate-400 px-2 pb-1">Swipe sideways to see all ${imgCount} photos</p>` : ''}
+                        </div>
+
+                        <div class="p-5">
+                            <div class="flex justify-between items-start mb-2">
+                                <h1 class="text-2xl font-bold text-slate-900">${p.title}</h1>
+                                <span class="text-2xl font-bold text-emerald-600">${p.currency} ${p.price.toLocaleString()}</span>
+                            </div>
+                            
+                            <div class="flex items-center gap-2 text-sm text-slate-500 mb-4">
+                                <span class="bg-slate-100 px-2 py-1 rounded text-xs font-medium text-slate-700">${p.condition}</span>
+                                <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i> ${p.location}</span>
+                                <span class="flex items-center gap-1"><i data-lucide="eye" class="w-3 h-3"></i> ${p.views} views</span>
+                            </div>
+
+                            <!-- Seller Mini-Profile -->
+                            <div role="button" tabindex="0" onclick="router.navigate('profile', '${p.sellerId}')" onkeydown="if(event.key==='Enter')router.navigate('profile','${p.sellerId}')" class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl mb-4 cursor-pointer hover:bg-slate-100 transition">
+                                <img src="${p.sellerAvatar}" alt="" class="w-12 h-12 rounded-full object-cover border border-slate-200">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="font-bold text-slate-800">${p.sellerName}</h3>
+                                        ${p.isVerified ? `<i data-lucide="badge-check" class="w-4 h-4 text-blue-500 fill-blue-100"></i>` : ''}
+                                        ${p.tier !== 'Free' ? `<span class="text-[10px] uppercase font-bold px-1.5 rounded ${views.getTierColor(p.tier)}">${p.tier}</span>` : ''}
+                                    </div>
+                                    <p class="text-xs text-slate-500">Seller profile · listings & reviews</p>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>
+                            </div>
+                            <div class="flex justify-end mb-6">
+                                <button type="button" onclick="handlers.reportSeller('${p.sellerId}', ${p.id})" class="text-xs font-medium text-slate-500 hover:text-red-600 flex items-center gap-1">
+                                    <i data-lucide="shield-alert" class="w-3 h-3"></i> Report seller
+                                </button>
+                            </div>
+
+                            <h3 class="font-bold text-slate-800 mb-2">Description</h3>
+                            <p class="text-slate-600 text-sm leading-relaxed mb-6">${p.description}</p>
+
+                            <!-- Reviews Section -->
+                            <div class="border-t border-slate-100 pt-4 mb-6">
+                                <h3 class="font-bold text-slate-800 mb-3">Reviews (${p.reviews.length})</h3>
+                                ${!isOwner ? `
+                                <form onsubmit="handlers.addReview(event, ${p.id})" class="mb-4 p-3 bg-slate-50 rounded-xl space-y-2">
+                                    <label class="text-xs font-medium text-slate-600">Your rating</label>
+                                    <select name="rating" class="w-full p-2 rounded-lg border border-slate-200 text-sm">
+                                        ${[5,4,3,2,1].map(n => `<option value="${n}">${n} stars</option>`).join('')}
+                                    </select>
+                                    <textarea name="text" rows="2" class="w-full p-2 rounded-lg border border-slate-200 text-sm" placeholder="Share your experience..." required></textarea>
+                                    <button type="submit" class="w-full py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">Post review</button>
+                                </form>` : ''}
+                                ${p.reviews.length === 0 ? '<p class="text-sm text-slate-400 italic">No reviews yet.</p>' : ''}
+                                ${p.reviews.map(r => `
+                                    <div class="mb-4 pb-4 border-b border-slate-50 last:border-0">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <span class="font-bold text-sm text-slate-700">${r.user}</span>
+                                            <div class="flex text-amber-400 text-xs">
+                                                ${Array(r.rating).fill('<i data-lucide="star" class="w-3 h-3 fill-current"></i>').join('')}
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-slate-400 mb-1">${r.date || ''}</p>
+                                        <p class="text-sm text-slate-600">${r.text}</p>
+                                        ${(r.replies && r.replies.length) ? `
+                                        <div class="mt-2 ml-3 pl-3 border-l-2 border-emerald-200 space-y-2">
+                                            ${r.replies.map(rep => `
+                                                <p class="text-sm text-slate-600"><span class="font-semibold ${rep.isSeller ? 'text-emerald-700' : ''}">${rep.user}</span>: ${rep.text}</p>
+                                            `).join('')}
+                                        </div>` : ''}
+                                        ${isOwner ? `
+                                        <form onsubmit="handlers.addReply(event, ${p.id}, '${r.id}')" class="mt-2 flex gap-2">
+                                            <input name="reply" class="flex-1 text-sm p-2 rounded-lg border border-slate-200" placeholder="Reply as seller..." required>
+                                            <button type="submit" class="px-3 py-2 text-sm font-semibold bg-emerald-600 text-white rounded-lg">Reply</button>
+                                        </form>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex gap-3">
+                                ${!isOwner ? `
+                                    <button onclick="handlers.startChat(${p.id})" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition flex items-center justify-center gap-2">
+                                        <i data-lucide="message-circle" class="w-5 h-5"></i> Chat with Seller
+                                    </button>
+                                ` : `
+                                    <button onclick="router.navigate('edit-product', ${p.id})" class="flex-1 bg-slate-800 text-white py-3 rounded-xl font-bold hover:bg-slate-900 transition">Edit Product</button>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            // 3. DASHBOARD VIEW
+            renderDashboard() {
+                if (!store.user || !store.user.email) return views.renderLoginPrompt();
+                if (store.user.isBanned) return views.renderBanScreen();
+
+                const myProducts = store.products.filter(p => p.sellerId === store.user.id);
+                
+                return `
+                    <div class="animate-fade-in pb-20">
+                        <div class="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 text-white mb-6 shadow-lg relative overflow-hidden">
+                            <div class="absolute top-0 right-0 opacity-10 transform translate-x-10 -translate-y-10">
+                                <i data-lucide="shopping-bag" class="w-48 h-48"></i>
+                            </div>
+                            <div class="relative z-10">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-14 h-14 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-2xl font-bold border-2 border-white/30">
+                                            ${store.user.avatar ? `<img src="${store.user.avatar}" class="w-full h-full rounded-full object-cover">` : store.user.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h2 class="font-bold text-lg flex items-center gap-2">
+                                                ${store.user.name}
+                                                ${store.user.isVerified ? `<i data-lucide="badge-check" class="w-5 h-5 text-blue-200 fill-blue-500/20"></i>` : ''}
+                                            </h2>
+                                            <p class="text-emerald-100 text-sm">${store.user.email || 'Guest Account'}</p>
+                                        </div>
+                                    </div>
+                                    <button onclick="handlers.logout()" class="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg backdrop-blur transition">Logout</button>
+                                </div>
+                                
+                                <div class="grid grid-cols-3 gap-3 mb-4">
+                                    <div class="bg-white/10 backdrop-blur rounded-lg p-2 text-center">
+                                        <div class="text-2xl font-bold">${myProducts.length}</div>
+                                        <div class="text-[10px] uppercase tracking-wider opacity-80">Products</div>
+                                    </div>
+                                    <div class="bg-white/10 backdrop-blur rounded-lg p-2 text-center">
+                                        <div class="text-2xl font-bold">${store.user.views || 0}</div>
+                                        <div class="text-[10px] uppercase tracking-wider opacity-80">Total Views</div>
+                                    </div>
+                                    <div class="bg-white/10 backdrop-blur rounded-lg p-2 text-center">
+                                        <div class="text-2xl font-bold text-amber-300">${store.user.tier}</div>
+                                        <div class="text-[10px] uppercase tracking-wider opacity-80">Tier</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="router.navigate('tiers')" class="flex-1 bg-white text-emerald-700 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-emerald-50 transition flex items-center justify-center gap-1">
+                                        <i data-lucide="zap" class="w-4 h-4"></i> Boost Sales
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wide opacity-80">My Shop</h3>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                                ${[
+                                    ['add-product', 'plus-circle', 'Add product', 'bg-emerald-50 text-emerald-700'],
+                                    ['dashboard', 'package', 'My listings', 'bg-slate-100 text-slate-700'],
+                                    ['boost', 'flame', 'Boost picks', 'bg-amber-50 text-amber-800'],
+                                    ['analytics', 'bar-chart-2', 'Analytics', 'bg-blue-50 text-blue-700'],
+                                    ['inbox', 'messages-square', 'Inbox', 'bg-violet-50 text-violet-700'],
+                                    ['notifications', 'bell', 'Alerts', 'bg-rose-50 text-rose-700'],
+                                    ['favorites', 'heart', 'Saved', 'bg-red-50 text-red-700'],
+                                    ['settings', 'settings', 'Settings', 'bg-slate-100 text-slate-700'],
+                                    ['profile', 'user', 'Public profile', 'bg-teal-50 text-teal-800'],
+                                    ['support', 'life-buoy', 'Help', 'bg-cyan-50 text-cyan-800']
+                                ].map(([route, icon, label, iconBox]) => {
+                                    const click = route === 'profile' ? `router.navigate('profile', '${store.user.id}')` : `router.navigate('${route}')`;
+                                    return `
+                                    <button type="button" onclick="${click}" class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 transition text-center ring-1 ring-slate-100">
+                                        <span class="p-2 rounded-xl ${iconBox}"><i data-lucide="${icon}" class="w-5 h-5"></i></span>
+                                        <span class="text-xs font-semibold text-slate-800 leading-tight">${label}</span>
+                                    </button>`;
+                                }).join('')}
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-2 text-center">Shortcuts open in-app — same as bottom navigation where applicable.</p>
+                        </div>
+
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-lg">My Products</h3>
+                            <button onclick="router.navigate('add-product')" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-emerald-700 transition">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Add New
+                            </button>
+                        </div>
+
+                        <div class="space-y-3">
+                            ${myProducts.length === 0 ? `
+                                <div class="text-center py-10 bg-white rounded-xl border border-dashed border-slate-300">
+                                    <i data-lucide="package-open" class="w-12 h-12 text-slate-300 mx-auto mb-2"></i>
+                                    <p class="text-slate-500">No products yet. Start selling!</p>
+                                </div>
+                            ` : ''}
+                            ${myProducts.map(p => `
+                                <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex gap-3 items-center">
+                                    <img src="${p.images[0]}" class="w-20 h-20 rounded-lg object-cover bg-slate-100">
+                                    <div class="flex-1">
+                                        <div class="flex justify-between items-start">
+                                            <h4 class="font-bold text-slate-800 line-clamp-1">${p.title}</h4>
+                                            ${p.isBoosted ? `<span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold">BOOSTED</span>` : ''}
+                                        </div>
+                                        <p class="text-emerald-600 font-bold text-sm">${p.currency} ${p.price.toLocaleString()}</p>
+                                        <div class="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                                            <span class="flex items-center gap-1"><i data-lucide="eye" class="w-3 h-3"></i> ${p.views}</span>
+                                            <span class="px-2 py-0.5 rounded-full ${p.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}">${p.status}</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col gap-2">
+                                        <button onclick="router.navigate('edit-product', ${p.id})" class="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                                        <button onclick="handlers.deleteProduct(${p.id})" class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            },
+
+            initDashboard() {
+                // Chart.js could go here for analytics, using simple CSS bars for now
+            },
+
+            // 4. ADD/EDIT PRODUCT
+            renderAddProduct() {
+                return this.renderProductForm();
+            },
+            renderEditProduct(id) {
+                const p = store.products.find(x => x.id == id);
+                return this.renderProductForm(p);
+            },
+            renderProductForm(product = null) {
+                const isEdit = !!product;
+                return `
+                    <div class="animate-fade-in max-w-lg mx-auto bg-white p-6 rounded-2xl shadow-sm">
+                        <h2 class="text-2xl font-bold mb-6">${isEdit ? 'Edit Product' : 'Sell an Item'}</h2>
+                        <form onsubmit="handlers.saveProduct(event, ${product ? product.id : null})" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Photos (Max 3)</label>
+                                <div class="flex gap-2 overflow-x-auto pb-2">
+                                    <div class="w-24 h-24 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-emerald-500 hover:text-emerald-500 transition relative">
+                                        <input type="file" class="absolute inset-0 opacity-0" accept="image/*" onchange="handlers.previewImage(this)" ${isEdit ? '' : 'required'}>
+                                        <i data-lucide="camera" class="w-6 h-6 mb-1"></i>
+                                        <span class="text-[10px]">Add</span>
+                                    </div>
+                                    <!-- Preview containers would go here -->
+                                </div>
+                                ${isEdit ? `<p class="text-xs text-amber-600 mt-1 flex items-center gap-1"><i data-lucide="alert-circle" class="w-3 h-3"></i> Photo updates take 10 mins to review.</p>` : ''}
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                                <input type="text" name="title" value="${product ? product.title : ''}" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" required>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Price (KES)</label>
+                                    <input type="number" name="price" value="${product ? product.price : ''}" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                                    <select name="category" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                        <option>Electronics</option>
+                                        <option>Fashion</option>
+                                        <option>Furniture</option>
+                                        <option>Cars</option>
+                                        <option>Property</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Condition</label>
+                                <div class="flex gap-2">
+                                    ${['New', 'Like New', 'Good', 'Fair'].map(c => `
+                                        <label class="flex-1 cursor-pointer">
+                                            <input type="radio" name="condition" value="${c}" class="peer hidden" ${product && product.condition === c ? 'checked' : ''}>
+                                            <div class="text-center py-2 rounded-lg border border-slate-200 text-sm peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 transition">${c}</div>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                                <textarea name="description" rows="3" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" required>${product ? product.description : ''}</textarea>
+                            </div>
+
+                            <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition">
+                                ${isEdit ? 'Update Product' : 'Post Product'}
+                            </button>
+                        </form>
+                    </div>
+                `;
+            },
+
+            // 5. TIERS / BOOST
+            renderTiers() {
+                const u = store.user;
+                const tierNow = u && u.email ? (u.tier || 'Free') : 'Free';
+                const tiers = [
+                    { name: 'Free', price: '0', color: 'bg-slate-100 text-slate-600', benefits: ['5 listings / month', 'Community support', 'Basic analytics (views)', '1 active boost slot'] },
+                    { name: 'Bronze', price: '500', color: 'tier-bronze text-white', benefits: ['20 listings / month', 'Priority inbox', 'Export CSV (demo)', '5 boosts / month', 'Pesapal checkout (edge)'] },
+                    { name: 'Silver', price: '1,500', color: 'tier-silver text-slate-800', benefits: ['50 listings / month', 'Advanced analytics', '15 boosts / month', 'Eligible for verified badge', 'Sponsored tag rotation'] },
+                    { name: 'Gold', price: '3,000', color: 'tier-gold text-yellow-900', benefits: ['Higher listing caps', 'Featured store placement', '50 boosts / month', 'Phone support (where available)', 'Discounted ad credits (demo)'] },
+                    { name: 'Platinum', price: '5,500', color: 'tier-platinum text-slate-800', benefits: ['Everything in Gold', 'Dedicated success chat', 'API & webhook stubs', 'Fraud-signal review priority'] },
+                    { name: 'Diamond', price: '8,000', color: 'tier-diamond text-blue-900', benefits: ['Highest priority placement', 'Account manager (enterprise)', 'Unlimited boosts (fair-use)', 'Custom storefront themes', 'White-glove verification'] }
+                ];
+
+                return `
+                    <div class="animate-fade-in pb-24 max-w-md mx-auto">
+                        <div class="text-center mb-8">
+                            <h2 class="text-2xl font-bold text-slate-900">Tiers &amp; benefits</h2>
+                            <p class="text-slate-500 text-sm">Paid upgrades call your <strong>Pesapal</strong> edge function, then update your plan locally for this demo UI.</p>
+                            ${!u || !u.email ? `<p class="text-amber-700 text-xs mt-2 font-medium">Sign in to subscribe and sync your plan.</p>` : ''}
+                        </div>
+
+                        <div class="grid gap-4">
+                            ${tiers.map(t => `
+                                <div class="relative overflow-hidden rounded-2xl shadow-md border border-slate-100 bg-white p-1">
+                                    <div class="absolute top-0 left-0 w-1 h-full ${t.color.split(' ')[0]}"></div>
+                                    <div class="p-5">
+                                        <div class="flex justify-between items-center mb-4">
+                                            <div>
+                                                <h3 class="font-bold text-lg ${tierNow === t.name ? 'text-emerald-600' : 'text-slate-800'}">${t.name}</h3>
+                                                <p class="text-xs text-slate-400">Monthly · KES billing</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="text-2xl font-bold text-slate-800">KES ${t.price}</span>
+                                            </div>
+                                        </div>
+                                        <ul class="space-y-2 mb-6">
+                                            ${t.benefits.map(b => `
+                                                <li class="flex items-start gap-2 text-sm text-slate-600">
+                                                    <i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5"></i> <span>${b}</span>
+                                                </li>
+                                            `).join('')}
+                                        </ul>
+                                        <button type="button" onclick="handlers.subscribe('${t.name}')" class="w-full py-2.5 rounded-xl font-bold transition ${tierNow === t.name ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800'}" ${tierNow === t.name ? 'disabled' : ''}>
+                                            ${tierNow === t.name ? 'Current plan' : (t.name === 'Free' ? 'Switch to Free' : 'Pay with Pesapal (edge)')}
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            },
+
+            // 6. INBOX & CHAT
+            renderInbox() {
+                const chats = [
+                    { id: 1, name: 'Tech Haven', lastMsg: 'Is the camera still available?', time: '2m', unread: 2, avatar: 'https://i.pravatar.cc/150?u=1' },
+                    { id: 2, name: 'Furniture Plus', lastMsg: 'I can pick it up tomorrow.', time: '1h', unread: 0, avatar: 'https://i.pravatar.cc/150?u=2' }
+                ];
+                const unreadN = store.notifications.filter(n => !n.read).length;
+
+                return `
+                    <div class="animate-fade-in h-[calc(100vh-140px)] flex flex-col pb-24">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold">Inbox</h2>
+                            <button type="button" onclick="router.navigate('notifications')" class="text-sm font-semibold text-emerald-600">Alerts ${unreadN ? `(${unreadN})` : ''}</button>
+                        </div>
+                        <div class="mb-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-bold text-slate-800">Recent notifications</span>
+                                <button type="button" onclick="router.navigate('notifications')" class="text-xs text-emerald-600">See all</button>
+                            </div>
+                            ${store.notifications.length === 0 ? '<p class="text-xs text-slate-400">No alerts yet — boosts, sales, and verifications appear here.</p>' : `
+                            <ul class="space-y-2">
+                                ${store.notifications.slice(0, 3).map(n => `
+                                    <li class="text-xs ${n.read ? 'text-slate-500' : 'text-slate-900 font-medium'}">${n.title} — ${n.body}</li>
+                                `).join('')}
+                            </ul>`}
+                        </div>
+                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wide mb-2">Messages</h3>
+                        <div class="bg-white rounded-2xl shadow-sm overflow-hidden flex-1">
+                            ${chats.map(c => `
+                                <div onclick="router.navigate('chat', ${c.id})" class="flex items-center gap-4 p-4 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition">
+                                    <div class="relative">
+                                        <img src="${c.avatar}" class="w-12 h-12 rounded-full object-cover">
+                                        ${c.unread > 0 ? `<span class="absolute bottom-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>` : ''}
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between items-baseline mb-1">
+                                            <h4 class="font-bold text-slate-800">${c.name}</h4>
+                                            <span class="text-xs text-slate-400">${c.time}</span>
+                                        </div>
+                                        <p class="text-sm text-slate-500 truncate ${c.unread > 0 ? 'font-semibold text-slate-700' : ''}">${c.lastMsg}</p>
+                                    </div>
+                                    ${c.unread > 0 ? `<span class="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">${c.unread}</span>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            },
+            renderChat(id) {
+                return `
+                    <div class="animate-fade-in h-[calc(100vh-140px)] flex flex-col bg-white rounded-2xl shadow-sm overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 flex items-center gap-3 bg-white">
+                            <button onclick="router.navigate('inbox')" class="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+                            <img src="https://i.pravatar.cc/150?u=${id}" class="w-10 h-10 rounded-full">
+                            <div>
+                                <h3 class="font-bold text-slate-800">Seller Name</h3>
+                                <p class="text-xs text-emerald-600 flex items-center gap-1"><span class="w-2 h-2 bg-emerald-500 rounded-full"></span> Online</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                            <div class="flex justify-center"><span class="text-xs text-slate-400 bg-slate-200 px-2 py-1 rounded">Today</span></div>
+                            <div class="flex gap-3">
+                                <div class="w-8 h-8 rounded-full bg-slate-300 flex-shrink-0"></div>
+                                <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700 max-w-[80%]">
+                                    Hello! Is this item still available for purchase?
+                                </div>
+                            </div>
+                            <div class="flex gap-3 flex-row-reverse">
+                                <div class="w-8 h-8 rounded-full bg-emerald-100 flex-shrink-0 overflow-hidden">
+                                    ${store.user.avatar ? `<img src="${store.user.avatar}">` : '<div class="w-full h-full bg-emerald-500"></div>'}
+                                </div>
+                                <div class="bg-emerald-600 text-white p-3 rounded-2xl rounded-tr-none shadow-sm text-sm max-w-[80%]">
+                                    Yes, it is. Are you interested in negotiating the price?
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-white border-t border-slate-100 flex gap-2">
+                            <input type="text" placeholder="Type a message..." class="flex-1 bg-slate-100 border-0 rounded-full px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            <button class="p-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition"><i data-lucide="send" class="w-5 h-5"></i></button>
+                        </div>
+                    </div>
+                `;
+            },
+
+            // 7. AUTH & SETTINGS
+            renderLoginPrompt() {
+                return `
+                    <div class="animate-fade-in flex flex-col items-center justify-center h-[60vh] text-center p-6">
+                        <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                            <i data-lucide="user" class="w-10 h-10"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">Sign In Required</h2>
+                        <p class="text-slate-500 mb-8 max-w-xs">Please sign in to manage your listings, view your dashboard, and chat with buyers.</p>
+                        <button onclick="modals.open('auth')" class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition w-full max-w-xs">Sign In / Sign Up</button>
+                        <button onclick="router.navigate('home')" class="mt-4 text-slate-400 hover:text-slate-600 text-sm">Continue as Guest</button>
+                    </div>
+                `;
+            },
+            renderSettings() {
+                if (!store.user || !store.user.email) {
+                    return `
+                    <div class="animate-fade-in max-w-lg mx-auto space-y-4 pb-20">
+                        <h2 class="text-2xl font-bold mb-2">Settings</h2>
+                        <p class="text-sm text-slate-500 mb-6">Sign in to manage notifications, verification, and payments.</p>
+                        <button type="button" onclick="modals.open('auth')" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold">Sign in</button>
+                        <button type="button" onclick="router.navigate('home')" class="w-full mt-2 py-3 rounded-xl border border-slate-200 text-slate-700 font-medium">Back to home</button>
+                    </div>`;
+                }
+                return `
+                    <div class="animate-fade-in max-w-lg mx-auto space-y-4 pb-20">
+                        <h2 class="text-2xl font-bold mb-6">Settings</h2>
+                        <p class="text-xs text-slate-400 mb-2">Supabase project: <code class="bg-slate-100 px-1 rounded">${SUPABASE_PROJECT_REF}</code></p>
+                        
+                        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                            <div onclick="modals.open('profileSetup')" class="p-4 flex items-center justify-between border-b border-slate-50 cursor-pointer hover:bg-slate-50">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i data-lucide="user" class="w-5 h-5"></i></div>
+                                    <span class="font-medium">Edit Profile</span>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>
+                            </div>
+                            <div onclick="router.navigate('tiers')" class="p-4 flex items-center justify-between border-b border-slate-50 cursor-pointer hover:bg-slate-50">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-amber-100 text-amber-600 rounded-lg"><i data-lucide="zap" class="w-5 h-5"></i></div>
+                                    <span class="font-medium">Subscription Plan</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold bg-slate-100 px-2 py-1 rounded text-slate-600">${store.user.tier}</span>
+                                    <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>
+                                </div>
+                            </div>
+                            <div onclick="modals.open('verification')" class="p-4 flex items-center justify-between border-b border-slate-50 cursor-pointer hover:bg-slate-50">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-green-100 text-green-600 rounded-lg"><i data-lucide="badge-check" class="w-5 h-5"></i></div>
+                                    <span class="font-medium">Get Verified</span>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                            <div onclick="router.navigate('support')" class="p-4 flex items-center justify-between border-b border-slate-50 cursor-pointer hover:bg-slate-50">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-purple-100 text-purple-600 rounded-lg"><i data-lucide="help-circle" class="w-5 h-5"></i></div>
+                                    <span class="font-medium">Help & Support</span>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>
+                            </div>
+                             <div onclick="modals.open('terms')" class="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-slate-100 text-slate-600 rounded-lg"><i data-lucide="file-text" class="w-5 h-5"></i></div>
+                                    <span class="font-medium">Terms & Conditions</span>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                            <div class="p-4 border-b border-slate-50">
+                                <span class="font-medium flex items-center gap-2"><i data-lucide="bell-ring" class="w-4 h-4 text-slate-500"></i> Notifications</span>
+                                <p class="text-xs text-slate-500 mt-2">Marketing, price drops, and message previews (demo toggles).</p>
+                                <div class="mt-3 space-y-2">
+                                    <label class="flex items-center justify-between text-sm"><span>Order &amp; payout alerts</span><input type="checkbox" checked class="rounded text-emerald-600"></label>
+                                    <label class="flex items-center justify-between text-sm"><span>Verification &amp; trust updates</span><input type="checkbox" checked class="rounded text-emerald-600"></label>
+                                    <label class="flex items-center justify-between text-sm"><span>Promotions from SokoMtaani</span><input type="checkbox" class="rounded text-emerald-600"></label>
+                                </div>
+                            </div>
+                            <div class="p-4 border-b border-slate-50">
+                                <span class="font-medium flex items-center gap-2"><i data-lucide="lock" class="w-4 h-4 text-slate-500"></i> Privacy</span>
+                                <p class="text-xs text-slate-500 mt-2">Profile visibility, blocked users, and data export (UI preview).</p>
+                                <label class="flex items-center justify-between text-sm mt-2"><span>Show seller phone after match</span><input type="checkbox" class="rounded text-emerald-600"></label>
+                            </div>
+                            <div class="p-4">
+                                <span class="font-medium flex items-center gap-2 text-red-700"><i data-lucide="shield-off" class="w-4 h-4"></i> Advanced / moderation</span>
+                                <p class="text-xs text-slate-500 mt-2">Calls your Supabase <code class="bg-slate-100 px-1 rounded text-[10px]">ban-current-user</code> edge function with the current session (if any).</p>
+                                <button type="button" onclick="handlers.banCurrentUserAccount()" class="mt-3 w-full py-2 rounded-lg border border-red-200 text-red-700 text-sm font-semibold hover:bg-red-50">Request account restriction (server)</button>
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="handlers.logout()" class="w-full bg-red-50 text-red-600 py-3 rounded-xl font-bold mt-4 hover:bg-red-100 transition">Log Out</button>
+                    </div>
+                `;
+            },
+            
+            renderBanScreen() {
+                return `
+                    <div class="animate-fade-in flex flex-col items-center justify-center h-[60vh] text-center p-6">
+                        <div class="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+                            <i data-lucide="shield-alert" class="w-10 h-10"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">Account Suspended</h2>
+                        <p class="text-slate-500 mb-8 max-w-xs">Your account has been flagged for violating our community guidelines. Your listings are currently hidden.</p>
+                        <button onclick="router.navigate('appeal')" class="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition w-full max-w-xs">Appeal Decision</button>
+                    </div>
+                `;
+            },
+
+            renderAppealForm() {
+                return `
+                    <div class="animate-fade-in max-w-lg mx-auto bg-white p-6 rounded-2xl shadow-sm">
+                        <h2 class="text-2xl font-bold mb-2">Appeal Form</h2>
+                        <p class="text-sm text-slate-500 mb-6">Submit a request to restore your account. Please be honest and thorough.</p>
+                        <form onsubmit="handlers.submitAppeal(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Reason for Appeal</label>
+                                <textarea class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" rows="4" placeholder="Explain why you think this is a mistake..." required></textarea>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <input type="checkbox" id="terms-read" class="mt-1" required>
+                                <label for="terms-read" class="text-sm text-slate-600">I have read and agree to the <a href="#" onclick="modals.open('terms')" class="text-emerald-600 underline">Terms & Conditions</a></label>
+                            </div>
+                            <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition">Submit Appeal</button>
+                        </form>
+                    </div>
+                `;
+            },
+
+            renderSupport() {
+                return `
+                    <div class="animate-fade-in max-w-lg mx-auto bg-white p-6 rounded-2xl shadow-sm">
+                        <h2 class="text-2xl font-bold mb-6">Contact Support</h2>
+                        <form onsubmit="handlers.contactSupport(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Issue Category</label>
+                                <select class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <option>Payment Problem</option>
+                                    <option>Bug Report</option>
+                                    <option>Safety Concern</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Message</label>
+                                <textarea class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" rows="5" placeholder="Describe your issue..." required></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg">Send Message</button>
+                        </form>
+                    </div>
+                `;
+            },
+
+            renderFavorites() {
+                const saved = store.products.filter(p => store.favorites.has(p.id));
+                return `
+                    <div class="animate-fade-in pb-24">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold text-slate-900">Saved products</h2>
+                            <span class="text-sm text-slate-500">${saved.length} saved</span>
+                        </div>
+                        ${saved.length === 0 ? `
+                        <div class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
+                            <i data-lucide="heart" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
+                            <p class="text-slate-600 mb-4">No saved listings yet. Tap the heart on a product to save it here.</p>
+                            <button type="button" onclick="router.navigate('home')" class="px-6 py-2 rounded-xl bg-emerald-600 text-white font-semibold">Browse marketplace</button>
+                        </div>` : `
+                        <div id="product-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            ${saved.map(p => components.productCard(p)).join('')}
+                        </div>`}
+                    </div>
+                `;
+            },
+
+            renderPublicProfile(sellerId) {
+                const plist = store.products.filter(p => p.sellerId === sellerId);
+                const head = plist[0];
+                if (!head) return `<div class="p-10 text-center">Seller not found</div>`;
+
+                store.profileViews[sellerId] = (store.profileViews[sellerId] || 0) + 1;
+                store.saveSellerSocial();
+
+                const likedSet = store.sellerLikes[sellerId] || new Set();
+                const uid = store.user ? String(store.user.id) : 'anon';
+                const iLiked = likedSet.has(uid);
+                const likeCount = likedSet.size;
+
+                return `
+                    <div class="animate-fade-in max-w-2xl mx-auto pb-24">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+                            <div class="h-24 bg-gradient-to-r from-emerald-600 to-teal-600"></div>
+                            <div class="px-5 pb-5 -mt-12 relative">
+                                <img src="${head.sellerAvatar}" alt="" class="w-24 h-24 rounded-2xl border-4 border-white object-cover shadow-md">
+                                <div class="mt-3 flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                                            ${head.sellerName}
+                                            ${head.isVerified ? `<i data-lucide="badge-check" class="w-5 h-5 text-blue-500"></i>` : ''}
+                                            ${head.tier && head.tier !== 'Free' ? `<span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded ${views.getTierColor(head.tier)}">${head.tier}</span>` : ''}
+                                        </h2>
+                                        <p class="text-sm text-slate-500 mt-1">${likeCount} profile likes · ${store.profileViews[sellerId] || 0} profile views</p>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button type="button" onclick="handlers.toggleSellerLike('${sellerId}')" class="px-4 py-2 rounded-xl border text-sm font-semibold ${iLiked ? 'border-red-200 bg-red-50 text-red-700' : 'border-slate-200 hover:bg-slate-50'}">
+                                            <span class="inline-flex items-center gap-1"><i data-lucide="heart" class="w-4 h-4 ${iLiked ? 'fill-current' : ''}"></i> ${iLiked ? 'Liked' : 'Like'}</span>
+                                        </button>
+                                        <button type="button" onclick="handlers.reportSeller('${sellerId}', null)" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50" title="Report"><i data-lucide="flag" class="w-4 h-4"></i></button>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-slate-600 mt-4">${plist.length} active listing${plist.length === 1 ? '' : 's'}</p>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-slate-800 mb-3">Listings</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            ${plist.filter(p => p.status === 'active').map(p => components.productCard(p)).join('')}
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderAnalytics() {
+                if (!store.user || !store.user.email) return views.renderLoginPrompt();
+                const mine = store.products.filter(p => p.sellerId === store.user.id);
+                const maxV = Math.max(1, ...mine.map(p => p.views || 0));
+                return `
+                    <div class="animate-fade-in pb-24 max-w-lg mx-auto">
+                        <h2 class="text-2xl font-bold mb-2">Shop analytics</h2>
+                        <p class="text-sm text-slate-500 mb-6">Views per listing (local demo — connect Supabase for live metrics).</p>
+                        ${mine.length === 0 ? `<p class="text-slate-500">Add products to see analytics.</p>` : `
+                        <div class="space-y-4">
+                            ${mine.map(p => {
+                                const pct = Math.round(((p.views || 0) / maxV) * 100);
+                                return `
+                                <div class="bg-white rounded-xl border border-slate-100 p-4">
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span class="font-medium text-slate-800 line-clamp-1">${p.title}</span>
+                                        <span class="text-emerald-600 font-bold">${p.views || 0} views</span>
+                                    </div>
+                                    <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <div class="h-full bg-emerald-500 rounded-full" style="width:${pct}%"></div>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>`}
+                        <button type="button" onclick="router.navigate('dashboard')" class="mt-8 w-full py-3 rounded-xl border border-slate-200 font-semibold text-slate-700 hover:bg-slate-50">Back to My Shop</button>
+                    </div>
+                `;
+            },
+
+            renderBoostManager() {
+                if (!store.user || !store.user.email) return views.renderLoginPrompt();
+                const mine = store.products.filter(p => p.sellerId === store.user.id);
+                return `
+                    <div class="animate-fade-in pb-24 max-w-lg mx-auto">
+                        <h2 class="text-2xl font-bold mb-2">Boost listings</h2>
+                        <p class="text-sm text-slate-500 mb-4">Choose which products are highlighted in search and category feeds. Higher tiers include more boosts.</p>
+                        ${mine.length === 0 ? `
+                        <div class="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200 mb-4">
+                            <p class="text-slate-600 mb-4">You have no products yet.</p>
+                            <button type="button" onclick="router.navigate('add-product')" class="px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold">Add new product</button>
+                        </div>` : `
+                        <form onsubmit="handlers.applyBoosts(event)" class="space-y-3">
+                            ${mine.map(p => `
+                                <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer hover:border-emerald-200">
+                                    <input type="checkbox" name="boost" value="${p.id}" class="rounded border-slate-300 text-emerald-600" ${p.isBoosted ? 'checked' : ''}>
+                                    <img src="${p.images[0]}" class="w-14 h-14 rounded-lg object-cover bg-slate-100" alt="">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="font-semibold text-slate-800 truncate">${p.title}</div>
+                                        <div class="text-xs text-slate-500">${p.currency} ${p.price.toLocaleString()}</div>
+                                    </div>
+                                </label>
+                            `).join('')}
+                            <button type="submit" class="w-full py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600">Save boost selection</button>
+                        </form>`}
+                        <button type="button" onclick="router.navigate('tiers')" class="mt-4 w-full py-3 rounded-xl bg-slate-900 text-white font-bold">Upgrade tier for more boosts</button>
+                    </div>
+                `;
+            },
+
+            renderNotificationsCenter() {
+                const items = store.notifications;
+                return `
+                    <div class="animate-fade-in pb-24 max-w-lg mx-auto">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold">Notifications</h2>
+                            <button type="button" onclick="handlers.markAllNotifsRead()" class="text-sm text-emerald-600 font-medium">Mark all read</button>
+                        </div>
+                        ${items.length === 0 ? `<p class="text-slate-500 text-sm">No notifications yet.</p>` : `
+                        <div class="space-y-2">
+                            ${items.map(n => `
+                                <button type="button" onclick="handlers.openNotification('${n.id}')" class="w-full text-left p-4 rounded-xl border ${n.read ? 'bg-white border-slate-100' : 'bg-emerald-50/50 border-emerald-100'}">
+                                    <div class="font-semibold text-slate-900 text-sm">${n.title}</div>
+                                    <div class="text-xs text-slate-500 mt-1">${n.body}</div>
+                                    <div class="text-[10px] text-slate-400 mt-2">${new Date(n.at).toLocaleString()}</div>
+                                </button>
+                            `).join('')}
+                        </div>`}
+                    </div>
+                `;
+            },
+
+            // Helpers
+            getTierColor(tier) {
+                const map = {
+                    'Bronze': 'bg-orange-100 text-orange-800',
+                    'Silver': 'bg-slate-200 text-slate-800',
+                    'Gold': 'bg-yellow-100 text-yellow-800',
+                    'Platinum': 'bg-gray-200 text-gray-800',
+                    'Diamond': 'bg-blue-100 text-blue-800'
+                };
+                return map[tier] || 'bg-slate-100 text-slate-600';
+            }
+        };
+
+        // --- Components ---
+        const components = {
+            productCard(p) {
+                const isFav = store.favorites.has(p.id);
+                return `
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden group cursor-pointer flex flex-col h-full" onclick="router.navigate('product', ${p.id})">
+                        <div class="relative h-40 bg-slate-200 overflow-hidden">
+                            <img src="${p.images[0]}" class="w-full h-full object-cover transition duration-500 group-hover:scale-110" loading="lazy">
+                            <button onclick="event.stopPropagation(); handlers.toggleFav(${p.id})" class="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-full shadow-sm hover:bg-white transition">
+                                <i data-lucide="heart" class="w-4 h-4 ${isFav ? 'fill-red-500 text-red-500' : 'text-slate-600'}"></i>
+                            </button>
+                            ${p.isBoosted ? `<div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-2 pt-6"><span class="text-[10px] font-bold text-white flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3 text-amber-400"></i> SPONSORED</span></div>` : ''}
+                            <div class="absolute top-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-slate-700 shadow-sm">${p.condition}</div>
+                        </div>
+                        <div class="p-3 flex flex-col flex-1">
+                            <div class="flex justify-between items-start mb-1">
+                                <h3 class="font-bold text-slate-800 text-sm line-clamp-1">${p.title}</h3>
+                            </div>
+                            <div class="text-emerald-600 font-bold text-sm mb-2">${p.currency} ${p.price.toLocaleString()}</div>
+                            <div class="mt-auto flex items-center justify-between text-xs text-slate-400">
+                                <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i> ${p.location.split(',')[0]}</span>
+                                <span class="flex items-center gap-1"><i data-lucide="eye" class="w-3 h-3"></i> ${p.views}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        };
+
+        // --- Handlers ---
+        const handlers = {
+            search(val) {
+                store.filters.search = val;
+                if (store.currentView === 'home') router.navigate('home');
+            },
+            filterCategory(cat) {
+                store.filters.category = cat;
+                router.navigate('home');
+            },
+            scrollGallery(index) {
+                const gal = document.getElementById('product-image-gallery');
+                if (!gal) return;
+                const w = gal.clientWidth || gal.offsetWidth;
+                gal.scrollTo({ left: index * w, behavior: 'smooth' });
+            },
+            toggleFav(id) {
+                if (store.favorites.has(id)) store.favorites.delete(id);
+                else store.favorites.add(id);
+                store.saveFavorites();
+                router.navigate(store.currentView);
+                toast.show(store.favorites.has(id) ? 'Saved to your list' : 'Removed from saved', 'success');
+            },
+            toggleSellerLike(sellerId) {
+                if (!store.sellerLikes[sellerId]) store.sellerLikes[sellerId] = new Set();
+                const uid = store.user ? String(store.user.id) : 'anon';
+                const s = store.sellerLikes[sellerId];
+                if (s.has(uid)) s.delete(uid);
+                else s.add(uid);
+                store.saveSellerSocial();
+                router.navigate('profile', sellerId);
+                toast.show(s.has(uid) ? 'You liked this seller' : 'Like removed', 'success');
+            },
+            reportProduct(id) {
+                modals.open('report', { target: 'listing', listingId: id });
+            },
+            reportSeller(sellerId, listingId) {
+                modals.open('report', { target: 'seller', sellerId, listingId });
+            },
+            addReview(e, productId) {
+                e.preventDefault();
+                if (!store.user || !store.user.email) {
+                    modals.open('auth');
+                    return;
+                }
+                const fd = new FormData(e.target);
+                const p = store.products.find(x => x.id === productId);
+                if (!p) return;
+                const rid = 'r_' + Date.now();
+                p.reviews.push({
+                    id: rid,
+                    userId: store.user.id,
+                    user: store.user.name || 'Buyer',
+                    rating: Number(fd.get('rating') || 5),
+                    text: String(fd.get('text') || '').trim(),
+                    date: new Date().toISOString().slice(0, 10),
+                    replies: []
+                });
+                store.persistProducts();
+                store.pushNotification('New review', `Someone reviewed “${p.title}”.`, 'dashboard');
+                e.target.reset();
+                router.navigate('product', productId);
+                toast.show('Review posted', 'success');
+            },
+            addReply(e, productId, reviewId) {
+                e.preventDefault();
+                const p = store.products.find(x => x.id === productId);
+                if (!p) return;
+                const r = p.reviews.find(x => x.id === reviewId);
+                if (!r) return;
+                const text = String(new FormData(e.target).get('reply') || '').trim();
+                if (!text) return;
+                if (!r.replies) r.replies = [];
+                r.replies.push({
+                    user: store.user.name || 'Seller',
+                    text,
+                    date: new Date().toISOString().slice(0, 10),
+                    isSeller: true
+                });
+                store.persistProducts();
+                e.target.reset();
+                router.navigate('product', productId);
+                toast.show('Reply posted', 'success');
+            },
+            applyBoosts(e) {
+                e.preventDefault();
+                const fd = new FormData(e.target);
+                const selected = new Set((fd.getAll('boost') || []).map(Number));
+                store.products.forEach(p => {
+                    if (p.sellerId === store.user.id) p.isBoosted = selected.has(p.id);
+                });
+                store.persistProducts();
+                store.pushNotification('Boosts updated', 'Your sponsored placements were saved locally.', 'boost');
+                router.navigate('boost');
+                toast.show('Boost selection saved', 'success');
+            },
+            openNotification(id) {
+                const n = store.notifications.find(x => x.id === id);
+                if (n) n.read = true;
+                store.saveNotifications();
+                updateNotifBadge();
+                if (n && n.route) router.navigate(n.route);
+                else router.navigate('notifications');
+            },
+            markAllNotifsRead() {
+                store.notifications.forEach(n => { n.read = true; });
+                store.saveNotifications();
+                updateNotifBadge();
+                router.navigate('notifications');
+            },
+            startChat(productId) {
+                if (!store.user || !store.user.email) {
+                    modals.open('auth');
+                    return;
+                }
+                router.navigate('chat', productId);
+            },
+            saveProduct(e, id) {
+                e.preventDefault();
+                const form = e.target;
+                const btn = form.querySelector('button[type="submit"]');
+                const fd = new FormData(form);
+                const title = String(fd.get('title') || '').trim();
+                const price = Number(fd.get('price') || 0);
+                const category = String(fd.get('category') || 'Electronics');
+                const condition = String(form.querySelector('input[name="condition"]:checked')?.value || 'Good');
+                const description = String(fd.get('description') || '').trim();
+                const placeholder = 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=500&q=80';
+
+                btn.disabled = true;
+                btn.innerHTML = '<div class="loader border-white border-t-transparent w-5 h-5 mx-auto"></div>';
+
+                setTimeout(() => {
+                    if (id) {
+                        const p = store.products.find(x => x.id == id);
+                        if (p) {
+                            Object.assign(p, { title, price, category, condition, description });
+                            if (!p.images || !p.images.length) p.images = [placeholder];
+                        }
+                        store.persistProducts();
+                        store.pushNotification('Listing updated', `“${title}” was saved.`, 'dashboard');
+                        toast.show('Product updated', 'success');
+                    } else {
+                        const newId = Math.max(0, ...store.products.map(p => p.id)) + 1;
+                        store.products.push({
+                            id: newId,
+                            title,
+                            price,
+                            currency: 'KES',
+                            condition,
+                            location: store.user.country ? `${store.user.country}` : 'Kenya',
+                            category,
+                            images: [placeholder],
+                            sellerId: store.user.id,
+                            sellerName: store.user.name || 'Seller',
+                            sellerAvatar: store.user.avatar || 'https://i.pravatar.cc/150?u=' + encodeURIComponent(store.user.id),
+                            isVerified: !!store.user.isVerified,
+                            isBoosted: false,
+                            tier: store.user.tier || 'Free',
+                            views: 0,
+                            likes: 0,
+                            status: 'active',
+                            description,
+                            reviews: []
+                        });
+                        store.persistProducts();
+                        store.pushNotification('New listing', `“${title}” is now live.`, 'dashboard');
+                        toast.show('Product listed!', 'success');
+                    }
+                    btn.disabled = false;
+                    btn.innerHTML = id ? 'Update Product' : 'Post Product';
+                    router.navigate('dashboard');
+                }, 600);
+            },
+            deleteProduct(id) {
+                if (!confirm('Delete this listing? This cannot be undone.')) return;
+                store.products = store.products.filter(p => p.id !== id);
+                store.favorites.delete(id);
+                store.saveFavorites();
+                store.persistProducts();
+                router.navigate('dashboard');
+                toast.show('Product deleted', 'success');
+            },
+            async subscribe(tierName) {
+                if (!store.user || !store.user.email) {
+                    modals.open('auth');
+                    return;
+                }
+                if (tierName === 'Free') {
+                    store.user.tier = 'Free';
+                    store.saveUser();
+                    toast.show('Plan set to Free (demo).', 'info');
+                    router.navigate('dashboard');
+                    return;
+                }
+                if (tierName === store.user.tier) return;
+                let token = null;
+                const sb = getSupabase();
+                if (sb) {
+                    const { data } = await sb.auth.getSession();
+                    token = data?.session?.access_token || null;
+                }
+                try {
+                    const res = await fetch(EDGE_PESAPAL_SUBMIT, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: 'Bearer ' + token } : {}),
+                            apikey: SUPABASE_ANON_KEY
+                        },
+                        body: JSON.stringify({
+                            tier: tierName,
+                            userId: store.user.id,
+                            email: store.user.email,
+                            projectRef: SUPABASE_PROJECT_REF
+                        })
+                    });
+                    if (!res.ok) {
+                        const errText = await res.text().catch(() => '');
+                        console.warn('Pesapal edge function:', res.status, errText);
+                        toast.show('Payment service returned ' + res.status + '. Applying tier locally for demo.', 'info');
+                    } else {
+                        toast.show('Payment initiated — complete checkout in the opened window if prompted.', 'success');
+                    }
+                } catch (err) {
+                    console.warn(err);
+                    toast.show('Network error calling payment. Tier applied locally for demo.', 'info');
+                }
+                store.user.tier = tierName;
+                store.saveUser();
+                store.pushNotification('Plan updated', `You are now on ${tierName}.`, 'dashboard');
+                router.navigate('dashboard');
+            },
+            submitAppeal(e) {
+                e.preventDefault();
+                modals.open('terms');
+                setTimeout(() => {
+                    toast.show('Appeal submitted. Check your email for updates.', 'success');
+                    router.navigate('home');
+                }, 1000);
+            },
+            contactSupport(e) {
+                e.preventDefault();
+                toast.show('Ticket submitted. We will email you shortly.', 'success');
+                router.navigate('settings');
+            },
+            async logout() {
+                try {
+                    await getSupabase()?.auth.signOut();
+                } catch (e) {}
+                store.user = null;
+                localStorage.removeItem('soko_user');
+                router.navigate('home');
+                toast.show('Logged out', 'info');
+            },
+            previewImage(input) {
+                void input;
+            },
+            async handleAuthGoogle() {
+                const sb = getSupabase();
+                if (sb) {
+                    const { error } = await sb.auth.signInWithOAuth({
+                        provider: 'google',
+                        options: { redirectTo: window.location.href.split('#')[0] }
+                    });
+                    if (error) toast.show(error.message, 'error');
+                    return;
+                }
+                handlers.handleAuthDemo('google');
+            },
+            async handleAuthEmail(e) {
+                e?.preventDefault?.();
+                const box = document.getElementById('auth-email');
+                const pw = document.getElementById('auth-password');
+                const email = box?.value?.trim();
+                const password = pw?.value || '';
+                if (!email || !password) {
+                    toast.show('Enter email and password', 'error');
+                    return;
+                }
+                const sb = getSupabase();
+                if (sb) {
+                    let { data, error } = await sb.auth.signInWithPassword({ email, password });
+                    if (error) {
+                        const signUp = await sb.auth.signUp({ email, password });
+                        if (signUp.error) {
+                            toast.show(signUp.error.message || error.message, 'error');
+                            return;
+                        }
+                        data = signUp.data;
+                    }
+                    await handlers.applySessionUser(data.session);
+                    modals.close();
+                    router.navigate('dashboard');
+                    toast.show('Signed in with Supabase', 'success');
+                    return;
+                }
+                handlers.handleAuthDemo('email', email);
+            },
+            handleAuthDemo(type, email) {
+                store.user = {
+                    id: 'usr_' + Math.random().toString(36).substr(2, 9),
+                    name: type === 'google' ? 'Google User' : (email ? email.split('@')[0] : 'New User'),
+                    email: email || 'demo@example.com',
+                    avatar: null,
+                    tier: 'Free',
+                    isVerified: false,
+                    isBanned: false,
+                    warnings: 0,
+                    country: store.user?.country || 'Kenya',
+                    phone: store.user?.phone || null,
+                    acceptedTermsAt: store.user?.acceptedTermsAt || null,
+                    termsVersion: store.user?.termsVersion || null
+                };
+                store.saveUser();
+                modals.close();
+                router.navigate('dashboard');
+                toast.show('Demo sign-in (configure Supabase Auth for production)', 'success');
+            },
+            async applySessionUser(session) {
+                if (!session?.user) return;
+                const u = session.user;
+                store.user = {
+                    id: u.id,
+                    name: u.user_metadata?.full_name || u.email?.split('@')[0] || 'User',
+                    email: u.email,
+                    avatar: u.user_metadata?.avatar_url || null,
+                    tier: store.user?.tier || 'Free',
+                    isVerified: !!store.user?.isVerified,
+                    isBanned: false,
+                    warnings: store.user?.warnings || 0,
+                    country: store.user?.country || 'Kenya',
+                    phone: store.user?.phone || null,
+                    acceptedTermsAt: store.user?.acceptedTermsAt || null,
+                    termsVersion: store.user?.termsVersion || null
+                };
+                store.saveUser();
+            },
+            submitReport() {
+                const descEl = document.getElementById('report-description');
+                const desc = descEl && descEl.value.trim();
+                if (!desc) {
+                    toast.show('Please add a description for moderators.', 'error');
+                    return;
+                }
+                const cat = document.getElementById('report-category')?.value || 'Other';
+                const anon = document.getElementById('report-anon')?.checked;
+                const block = document.getElementById('report-block')?.checked;
+                const payload = modals.reportPayload || { target: 'listing' };
+                console.info('Report payload', { ...payload, category: cat, description: desc, anon, block });
+                store.pushNotification('Report sent', 'Thanks — our team will review your report.', 'support');
+                modals.close();
+                toast.show('Report submitted. Thank you.', 'success');
+            },
+            acceptTerms() {
+                const c = document.getElementById('terms-accept');
+                if (!c || !c.checked) {
+                    toast.show('Please tick the acceptance box to continue.', 'error');
+                    return;
+                }
+                if (store.user) {
+                    store.user.acceptedTermsAt = new Date().toISOString();
+                    store.user.termsVersion = '2026-04-14';
+                    store.saveUser();
+                }
+                modals.close();
+                toast.show('Terms acceptance saved on this device.', 'success');
+            },
+            verificationMark(step) {
+                if (!store.verification.steps) store.verification.steps = {};
+                store.verification.steps[step] = true;
+                store.saveVerification();
+                toast.show('Step marked complete (demo).', 'success');
+                modals.close();
+                modals.open('verification');
+            },
+            verificationSubmit() {
+                const s = store.verification.steps || {};
+                if (!s.email || !s.phone || !s.idUpload || !s.liveness) {
+                    toast.show('Finish every verification step before submitting.', 'error');
+                    return;
+                }
+                store.verification.status = 'pending_review';
+                store.verification.submittedAt = new Date().toISOString();
+                store.saveVerification();
+                store.pushNotification('Verification queued', 'We will email you after manual review.', 'settings');
+                modals.close();
+                toast.show('Verification submitted', 'success');
+            },
+            saveProfileSetup(e) {
+                e.preventDefault();
+                if (!store.user) return;
+                const fd = new FormData(e.target);
+                store.user.name = String(fd.get('name') || '').trim() || store.user.name;
+                store.user.phone = String(fd.get('phone') || '').trim() || null;
+                store.user.country = String(fd.get('country') || '').trim() || store.user.country;
+                store.saveUser();
+                modals.close();
+                toast.show('Profile updated', 'success');
+                router.navigate('settings');
+            },
+            async banCurrentUserAccount() {
+                if (!confirm('This calls the ban-current-user edge function and may lock your account. Continue?')) return;
+                let token = null;
+                const sb = getSupabase();
+                if (sb) {
+                    const { data } = await sb.auth.getSession();
+                    token = data?.session?.access_token || null;
+                }
+                try {
+                    const res = await fetch(EDGE_BAN_CURRENT_USER, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: 'Bearer ' + token } : {}),
+                            apikey: SUPABASE_ANON_KEY
+                        },
+                        body: JSON.stringify({ projectRef: SUPABASE_PROJECT_REF, reason: 'user_requested' })
+                    });
+                    const txt = await res.text();
+                    if (!res.ok) {
+                        toast.show('Ban request failed: ' + res.status + ' ' + txt.slice(0, 80), 'error');
+                        return;
+                    }
+                    store.user.isBanned = true;
+                    store.saveUser();
+                    toast.show('Account restricted per server response.', 'info');
+                    router.navigate('dashboard');
+                } catch (err) {
+                    toast.show('Network error: ' + (err.message || 'failed'), 'error');
+                }
+            }
+        };
+
+        // --- Modals ---
+        const modals = {
+            reportPayload: null,
+            open(type, data = null) {
+                const container = document.getElementById('modal-container');
+                let content = '';
+                
+                if (type === 'auth') {
+                    content = `
+                        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-fade-in relative">
+                            <button type="button" onclick="modals.close()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+                            <div class="text-center mb-6">
+                                <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i data-lucide="shopping-bag" class="w-8 h-8"></i>
+                                </div>
+                                <h2 class="text-2xl font-bold">Sign in</h2>
+                                <p class="text-slate-500 text-sm">Google or email via Supabase Auth. Demo mode works offline.</p>
+                            </div>
+                            <div class="space-y-3">
+                                <button type="button" onclick="handlers.handleAuthGoogle()" class="w-full flex items-center justify-center gap-3 border border-slate-200 py-3 rounded-xl font-medium hover:bg-slate-50 transition">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                                    Continue with Google
+                                </button>
+                                <div class="relative my-4">
+                                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                                    <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-slate-500">Or email &amp; password</span></div>
+                                </div>
+                                <form onsubmit="handlers.handleAuthEmail(event)" class="space-y-3">
+                                    <input id="auth-email" type="email" autocomplete="email" placeholder="Email address" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" required>
+                                    <input id="auth-password" type="password" autocomplete="current-password" placeholder="Password" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" required>
+                                    <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition">Sign in or create account</button>
+                                </form>
+                                <p class="text-[10px] text-slate-400 text-center">Configure Google provider &amp; redirect URLs in Supabase Dashboard → Authentication.</p>
+                            </div>
+                        </div>
+                    `;
+                } else if (type === 'report') {
+                    const payload = data && typeof data === 'object' ? data : { target: 'listing', listingId: data };
+                    modals.reportPayload = payload;
+                    const isSeller = payload.target === 'seller';
+                    content = `
+                        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-fade-in max-h-[90vh] overflow-y-auto">
+                            <h3 class="text-xl font-bold mb-1">${isSeller ? 'Report seller' : 'Report listing'}</h3>
+                            <p class="text-sm text-slate-500 mb-4">Add detail so moderators can act quickly. False reports may affect your account.</p>
+                            <div class="space-y-3 mb-4">
+                                <label class="block text-xs font-semibold text-slate-600">Category</label>
+                                <select id="report-category" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 text-sm">
+                                    ${(isSeller
+                                        ? ['Harassment or threats', 'Fake identity / impersonation', 'Off-platform payment scam', 'Prohibited inventory pattern', 'Spam or duplicate shops', 'Other']
+                                        : ['Fraudulent listing', 'Prohibited item', 'Wrong category', 'Duplicate post', 'Misleading photos', 'Other']).map(r => `<option value="${r}">${r}</option>`).join('')}
+                                </select>
+                                <label class="block text-xs font-semibold text-slate-600">Description (required)</label>
+                                <textarea id="report-description" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 text-sm" rows="4" placeholder="What happened? Include order IDs, message excerpts, or timestamps if relevant." required></textarea>
+                                <label class="flex items-start gap-2 text-sm text-slate-600 cursor-pointer">
+                                    <input id="report-anon" type="checkbox" class="mt-1 rounded text-emerald-600">
+                                    <span>Submit anonymously to the seller (we still store your account internally for abuse prevention).</span>
+                                </label>
+                                <label class="flex items-start gap-2 text-sm text-slate-600 cursor-pointer">
+                                    <input id="report-block" type="checkbox" class="mt-1 rounded text-emerald-600">
+                                    <span>Also block this ${isSeller ? 'seller' : 'listing'} from appearing in my feeds (demo toggle).</span>
+                                </label>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="modals.close()" class="flex-1 py-2 rounded-lg border border-slate-200 font-medium hover:bg-slate-50">Cancel</button>
+                                <button type="button" onclick="handlers.submitReport()" class="flex-1 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700">Submit report</button>
+                            </div>
+                        </div>
+                    `;
+                } else if (type === 'terms') {
+                    content = `
+                        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 animate-fade-in max-h-[90vh] flex flex-col">
+                            <h3 class="text-xl font-bold mb-2">Terms &amp; Conditions</h3>
+                            <p class="text-xs text-slate-500 mb-4">Expand each section for plain-language explanations. You must accept to use paid features and verification.</p>
+                            <div class="flex-1 overflow-y-auto text-sm text-slate-600 space-y-3 pr-2">
+                                <details open class="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <summary class="font-semibold cursor-pointer text-slate-800">1. Acceptance &amp; eligibility</summary>
+                                    <p class="mt-2 text-xs leading-relaxed"><strong>Legal:</strong> Using SokoMtaani means you agree to these terms.</p>
+                                    <p class="mt-1 text-xs leading-relaxed"><strong>Explained:</strong> If you do not agree, stop using the marketplace. You must be able to enter a binding agreement in your country.</p>
+                                </details>
+                                <details class="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <summary class="font-semibold cursor-pointer text-slate-800">2. Accounts, one-person rule &amp; device signals</summary>
+                                    <p class="mt-2 text-xs leading-relaxed"><strong>Legal:</strong> One account per person; no ban evasion or coordinated manipulation.</p>
+                                    <p class="mt-1 text-xs leading-relaxed"><strong>Explained:</strong> We may use email, phone, payment fingerprints, and IP/device hints to prevent fraud and duplicate shops.</p>
+                                </details>
+                                <details class="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <summary class="font-semibold cursor-pointer text-slate-800">3. Listings, boosts &amp; fees</summary>
+                                    <p class="mt-2 text-xs leading-relaxed"><strong>Legal:</strong> Accurate titles, real photos, and honest pricing are required.</p>
+                                    <p class="mt-1 text-xs leading-relaxed"><strong>Explained:</strong> Boosts and subscriptions may be billed through partners such as Pesapal. Taxes and FX fees may apply.</p>
+                                </details>
+                                <details class="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <summary class="font-semibold cursor-pointer text-slate-800">4. Prohibited &amp; restricted items</summary>
+                                    <p class="mt-2 text-xs leading-relaxed"><strong>Legal:</strong> No illegal goods, counterfeits, weapons, or content that violates local law.</p>
+                                    <p class="mt-1 text-xs leading-relaxed"><strong>Explained:</strong> When in doubt, ask support before listing. Violations can lead to removal and suspension.</p>
+                                </details>
+                                <details class="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <summary class="font-semibold cursor-pointer text-slate-800">5. Reviews, messages &amp; behaviour</summary>
+                                    <p class="mt-2 text-xs leading-relaxed"><strong>Legal:</strong> No harassment, hate, or attempts to bypass in-app safety tooling.</p>
+                                    <p class="mt-1 text-xs leading-relaxed"><strong>Explained:</strong> Sellers may reply to reviews. We may remove abusive content.</p>
+                                </details>
+                                <details class="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <summary class="font-semibold cursor-pointer text-slate-800">6. Privacy &amp; data</summary>
+                                    <p class="mt-2 text-xs leading-relaxed"><strong>Legal:</strong> Our processing includes security, analytics, and legal compliance.</p>
+                                    <p class="mt-1 text-xs leading-relaxed"><strong>Explained:</strong> Public profile fields (name, shop, ratings) are visible to buyers. DMs are stored to investigate abuse reports.</p>
+                                </details>
+                                <details class="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <summary class="font-semibold cursor-pointer text-slate-800">7. Enforcement &amp; appeals</summary>
+                                    <p class="mt-2 text-xs leading-relaxed"><strong>Legal:</strong> We may suspend accounts, withhold payouts during review, and cooperate with authorities.</p>
+                                    <p class="mt-1 text-xs leading-relaxed"><strong>Explained:</strong> Use the appeal flow if you believe a mistake was made. Automated systems may flag risk before humans review.</p>
+                                </details>
+                            </div>
+                            <label class="flex items-start gap-2 mt-4 text-sm text-slate-700">
+                                <input id="terms-accept" type="checkbox" class="mt-1 rounded text-emerald-600">
+                                <span>I have read these terms and agree to be bound by the latest version shown here.</span>
+                            </label>
+                            <button type="button" onclick="handlers.acceptTerms()" class="mt-4 w-full bg-emerald-600 text-white py-3 rounded-xl font-bold">Save acceptance</button>
+                        </div>
+                    `;
+                } else if (type === 'verification') {
+                    content = `
+                        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-fade-in">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">Seller verification</h3>
+                                <span class="text-[10px] uppercase font-bold text-slate-400">Advanced</span>
+                            </div>
+                            <ol class="text-xs text-slate-500 space-y-3 mb-4 list-decimal list-inside">
+                                <li><strong class="text-slate-700">Email &amp; phone</strong> — confirm codes (simulated below).</li>
+                                <li><strong class="text-slate-700">Government ID</strong> — upload clear photo; blur sensitive numbers if your jurisdiction allows.</li>
+                                <li><strong class="text-slate-700">Selfie liveness</strong> — short video or live capture to match ID.</li>
+                                <li><strong class="text-slate-700">Business docs</strong> (optional) — registration or tax PIN for store badges.</li>
+                            </ol>
+                            <div class="space-y-3 text-sm">
+                                <button type="button" onclick="handlers.verificationMark('email')" class="w-full py-2 rounded-xl border ${store.verification.steps.email ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 hover:bg-slate-50'}">Step1 · Confirm email (demo)</button>
+                                <button type="button" onclick="handlers.verificationMark('phone')" class="w-full py-2 rounded-xl border ${store.verification.steps.phone ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 hover:bg-slate-50'}">Step 2 · Confirm phone (demo)</button>
+                                <button type="button" onclick="handlers.verificationMark('idUpload')" class="w-full py-2 rounded-xl border ${store.verification.steps.idUpload ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 hover:bg-slate-50'}">Step 3 · Upload ID (demo)</button>
+                                <button type="button" onclick="handlers.verificationMark('liveness')" class="w-full py-2 rounded-xl border ${store.verification.steps.liveness ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 hover:bg-slate-50'}">Step 4 · Liveness check (demo)</button>
+                            </div>
+                            <button type="button" onclick="handlers.verificationSubmit()" class="mt-4 w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Submit for manual review</button>
+                            <p class="text-[10px] text-slate-400 mt-2">Production: connect each step to Supabase Storage + Edge Functions with audit logging.</p>
+                        </div>
+                    `;
+                } else if (type === 'profileSetup') {
+                    content = `
+                        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-fade-in">
+                             <h3 class="text-xl font-bold mb-4">Edit profile</h3>
+                             <form onsubmit="handlers.saveProfileSetup(event)" class="space-y-3">
+                                <input name="name" type="text" placeholder="Full name" value="${(store.user?.name || '').replace(/"/g, '&quot;')}" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200" required>
+                                <input name="phone" type="tel" placeholder="Phone number" value="${(store.user?.phone || '').replace(/"/g, '&quot;')}" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                <label class="block text-xs font-medium text-slate-600">Country / region</label>
+                                <select id="country-select" name="country" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700"></select>
+                                <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold">Save changes</button>
+                             </form>
+                        </div>
+                    `;
+                }
+
+                container.innerHTML = content;
+                container.classList.remove('hidden');
+                lucide.createIcons();
+                if (type === 'profileSetup') populateCountrySelect('country-select');
+            },
+            close() {
+                document.getElementById('modal-container').classList.add('hidden');
+            }
+        };
+
+        // --- Toast System ---
+        const toast = {
+            show(msg, type = 'info') {
+                const container = document.getElementById('toast-container');
+                const el = document.createElement('div');
+                const colors = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-500' : 'bg-slate-800';
+                
+                el.className = `${colors} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 min-w-[250px] animate-fade-in pointer-events-auto`;
+                el.innerHTML = `
+                    <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info'}" class="w-5 h-5"></i>
+                    <span class="font-medium text-sm">${msg}</span>
+                `;
+                
+                container.appendChild(el);
+                lucide.createIcons();
+                
+                setTimeout(() => {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(-10px)';
+                    setTimeout(() => el.remove(), 300);
+                }, 3000);
+            }
+        };
+
+        // --- Global Helpers ---
+        function toggleMenu() {
+            // Simple mobile menu toggle logic could go here
+            // For now, let's just navigate to settings or dashboard
+            router.navigate('settings');
+        }
+
+        function handleSellClick() {
+            if (!store.user || !store.user.email || store.user.isBanned) {
+                modals.open('auth');
+            } else {
+                router.navigate('add-product');
+            }
+        }
+
+        function updateNotifBadge() {
+            const el = document.getElementById('notif-badge');
+            if (!el) return;
+            const n = store.notifications.filter(x => !x.read).length;
+            el.classList.toggle('hidden', n === 0);
+        }
+
+        async function populateCountrySelect(selectId) {
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            sel.innerHTML = '<option value="">Loading countries…</option>';
+            try {
+                if (!store.countriesCache) {
+                    const res = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2');
+                    if (!res.ok) throw new Error('fetch');
+                    const data = await res.json();
+                    store.countriesCache = data
+                        .map(c => c.name?.common)
+                        .filter(Boolean)
+                        .sort((a, b) => a.localeCompare(b));
+                }
+                const current = store.user?.country || '';
+                sel.innerHTML = store.countriesCache.map(name => `
+                    <option value="${name.replace(/"/g, '&quot;')}" ${name === current ? 'selected' : ''}>${name}</option>
+                `).join('');
+            } catch (e) {
+                const fallback = ['Kenya', 'Uganda', 'Tanzania', 'Rwanda', 'Nigeria', 'South Africa', 'India', 'United Kingdom', 'United States', 'Canada', 'Australia', 'Germany', 'France', 'China', 'Brazil', 'Japan'];
+                sel.innerHTML = fallback.map(name => `<option value="${name}" ${name === (store.user?.country) ? 'selected' : ''}>${name}</option>`).join('');
+            }
+        }
+
+        // --- Initialization ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            store.init();
+            const sb = getSupabase();
+            if (sb) {
+                try {
+                    const { data: { session } } = await sb.auth.getSession();
+                    if (session?.user) await handlers.applySessionUser(session);
+                    sb.auth.onAuthStateChange((_event, session) => {
+                        if (session?.user) handlers.applySessionUser(session);
+                    });
+                } catch (e) {
+                    console.warn('Supabase session', e);
+                }
+            }
+            updateNotifBadge();
+            router.navigate('home');
+        });
+
+    </script>
+</body>
+</html>
